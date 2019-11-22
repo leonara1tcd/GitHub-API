@@ -16,10 +16,6 @@ myapp = oauth_app(appname = "APIGitHub",
 github_token = oauth2.0_token(oauth_endpoints("github"), myapp)
 
 # Use API
-gtoken = config(token = github_token)
-UserFollowingData = GET("https://api.github.com/users/jtleek/following", gtoken)
-UserFollowingDataContent = content(UserFollowingData)
-UserFollowingDataFrame = jsonlite::fromJSON(jsonlite::toJSON(UserFollowingDataContent))
 
 followersLogins = c(UserFollowingDataFrame$login)
 
@@ -54,3 +50,9 @@ repos = fromJSON("https://api.github.com/users/leonara1tcd/repos")
 repos$name #Names of my public repositories
 repos$created_at #Gives details of the dates the repositories were created 
 repos$full_name #gives names of repositories
+
+myData = GET("https://api.github.com/users/mbostock/followers?per_page=100;", gtoken)
+extract = content(myData)
+stop_for_status(myData)
+githubDB = jsonlite::fromJSON(jsonlite::toJSON(extract))
+githubDB$login
