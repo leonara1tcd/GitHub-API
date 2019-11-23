@@ -16,8 +16,11 @@ myapp = oauth_app(appname = "APIGitHub",
 github_token = oauth2.0_token(oauth_endpoints("github"), myapp)
 
 # Use API
+gtoken <- config(token = github_token)
+req <- GET("https://api.github.com/users/jtleek/repos", gtoken)
 
-followersLogins = c(UserFollowingDataFrame$login)
+#Error handling
+stop_for_status(req)
 
 # Extract content from a request
 json1 = content(req)
@@ -36,3 +39,77 @@ extract = content(myData)
 stop_for_status(myData)
 githubDB = jsonlite::fromJSON(jsonlite::toJSON(extract))
 githubDB$login
+
+#Create an empty vector and data.frame
+users = c()
+usersDB = data.frame(
+  username = integer(),
+  following = integer(),
+  followers = integer(),
+  repos = integer(),
+  dateCreated = integer()
+)
+
+#Loops through users and adds to list
+for(i in 1:length(user_ids))
+{
+  followingURL = paste("https://api.github.com/users/", user_ids[i], "/following", sep = "")
+  followingRequest = GET(followingURL, gtoken)
+  followingContent = content(followingRequest)
+
+  if(length(followingContent) == 0)
+  {
+    next
+  } 
+  followingDF = jsonlite::fromJSON(jsonlite::toJSON(followingContent))
+  followingLogin = followingDF$login
+
+  for (j in 1:length(followingLogin))
+  {
+    if (is.element(followingLogin[j], users) == FALSE)
+    {
+      users[length(users) + 1] = followingLogin[j]
+      
+      #Obtaining information from each user
+      followingUrl2 = paste("https://api.github.com/users/", followingLogin[j], sep = "")
+      following2 = GET(followingUrl2, gtoken)
+      followingContent2 = content(following2)
+      followingDF2 = jsonlite::fromJSON(jsonlite::toJSON(followingContent2))
+      
+      #Retrieving who user is following
+      followingNumber = followingDF2$following
+      
+      #Retrieving users followers
+      followersNumber = followingDF2$followers
+      
+      #Retrieving how many repository the user has 
+      reposNumber = followingDF2$public_repos
+      
+      #Retrieving year which each user joined Github
+      yearCreated = substr(followingDF2$created_at, start = 1, stop = 4)
+      
+      #Add users data to a new row in dataframe
+      usersDB[nrow(usersDB) + 1, ] = c(followingLogin[j], followingNumber, followersNumber, reposNumber, yearCreated)
+      
+    }
+    next
+  }
+  #Stop when there are more than 150 users
+  if(length(users) > 150)
+  {
+    break
+  }
+  next
+}
+
+#Created link to plotly which creates online interactive graphs.
+Sys.setenv("plotly_username"="leonara1")
+Sys.setenv("plotly_api_key"="yiFJeOMQXwYvetnbAdYq")
+
+#Plot one graphs repositories vs followers by year.
+#The data is represented by a scatter plot.
+#X-axis displays 'repositories' which shows the no. of repositories per user.
+#Y-axis displays 'followers' which shows the no. of followers of each each of mbostock's followers.
+plot1 = plot_ly(data = usersDB, x = ~repos, y = ~followers, text = ~paste("Followers: ", followers, "<br>Repositories: ", repos, "<br>Date Created:", dateCreated), color = ~dateCreated)
+plot1
+#Plot can be viewed on plotly for more interactive visualisation of the data: https://plot.ly/~leonara1/1/#/
